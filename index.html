@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Search Engine</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent: #0070f3;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        h2 {
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 30px;
+            letter-spacing: 0.5px;
+        }
+        .search-container {
+            position: relative;
+        }
+        input {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+            background-color: var(--card-bg);
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: var(--text-main);
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(0, 112, 243, 0.3);
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .result-item {
+            background-color: var(--card-bg);
+            padding: 15px 20px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border-left: 4px solid transparent;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .result-item:hover {
+            transform: translateY(-2px);
+            border-left-color: var(--accent);
+        }
+        .result-item a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .result-item a:hover {
+            color: var(--accent);
+        }
+        .result-item p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .no-results {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Virtual Search Engine</h2>
+    <div class="search-container">
+        <input type="text" id="search-box" placeholder="এখানে খুঁজুন (যেমন: Python, Bot, Cloudflare)..." autocomplete="off">
+    </div>
+    <div id="results"></div>
+
+    <script>
+        const searchBox = document.getElementById('search-box');
+        const resultsContainer = document.getElementById('results');
+
+        searchBox.addEventListener('input', async (e) => {
+            const query = e.target.value.trim();
+            
+            if (!query) {
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
+            try {
+                // Cloudflare Pages অটোমেটিক্যালি /functions/search.js কে /search রাউটে ম্যাপ করে
+                const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results">কোনো ফলাফল পাওয়া যায়নি!</div>';
+                    return;
+                }
+
+                // রেজাল্ট রেন্ডার করা
+                resultsContainer.innerHTML = data.map(item => `
+                    <div class="result-item">
+                        <a href="${item.url}" target="_blank">${item.title}</a>
+                        <p>${item.description}</p>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error("Error fetching search results:", error);
+            }
+        });
+    </script>
+</body>
+  </html>
+  
