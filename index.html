@@ -3,129 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Search Engine</title>
+    <title>Virtual Global Search Engine</title>
     <style>
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --accent: #0070f3;
-            --text-main: #ffffff;
-            --text-muted: #aaaaaa;
+            --bg-color: #202124;
+            --search-bg: #303134;
+            --text-main: #e8eaed;
+            --text-link: #8ab4f8;
+            --text-snippet: #bdc1c6;
+            --text-url: #3c4043;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            max-width: 650px;
-            margin: 0 auto;
-            padding: 40px 20px;
+            margin: 0;
+            padding: 0;
         }
-        h2 {
-            text-align: center;
-            font-weight: 600;
-            margin-bottom: 30px;
-            letter-spacing: 0.5px;
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #3c4043;
+            background: #202124;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        .search-container {
-            position: relative;
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            margin-right: 20px;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .logo span { color: #4285F4; }
+        .search-box-container {
+            flex-grow: 1;
+            max-width: 600px;
         }
         input {
             width: 100%;
-            padding: 14px 20px;
+            padding: 12px 20px;
             font-size: 16px;
-            background-color: var(--card-bg);
-            border: 1px solid #333;
-            border-radius: 8px;
-            color: var(--text-main);
+            background-color: var(--search-bg);
+            border: 1px solid transparent;
+            border-radius: 24px;
+            color: #fff;
             box-sizing: border-box;
-            transition: all 0.3s ease;
         }
         input:focus {
             outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 10px rgba(0, 112, 243, 0.3);
+            box-shadow: 0 1px 6px rgba(32,33,36,.28);
         }
-        #results {
-            margin-top: 20px;
+        .results-container {
+            max-width: 650px;
+            margin: 30px 20px 20px 160px;
+        }
+        @media (max-width: 800px) {
+            .header { flex-direction: column; align-items: flex-start; }
+            .results-container { margin: 20px; }
+            .logo { margin-bottom: 10px; }
         }
         .result-item {
-            background-color: var(--card-bg);
-            padding: 15px 20px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            border-left: 4px solid transparent;
-            transition: transform 0.2s ease, border-color 0.2s ease;
+            margin-bottom: 30px;
         }
-        .result-item:hover {
-            transform: translateY(-2px);
-            border-left-color: var(--accent);
+        .result-item .site-url {
+            font-size: 12px;
+            color: var(--text-snippet);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .result-item a {
-            color: var(--text-main);
+        .result-item a.result-title {
+            color: var(--text-link);
             text-decoration: none;
-            font-size: 18px;
-            font-weight: 500;
-            display: block;
-            margin-bottom: 5px;
+            font-size: 20px;
+            display: inline-block;
         }
-        .result-item a:hover {
-            color: var(--accent);
+        .result-item a.result-title:hover {
+            text-decoration: underline;
         }
-        .result-item p {
-            margin: 0;
+        .result-item .snippet {
             font-size: 14px;
-            color: var(--text-muted);
+            color: var(--text-snippet);
+            line-height: 1.4;
+            margin-top: 5px;
         }
-        .no-results {
-            text-align: center;
-            color: var(--text-muted);
-            margin-top: 20px;
+        .status-msg {
+            color: var(--text-snippet);
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
 
-    <h2>Virtual Search Engine</h2>
-    <div class="search-container">
-        <input type="text" id="search-box" placeholder="এখানে খুঁজুন (যেমন: Python, Bot, Cloudflare)..." autocomplete="off">
+    <div class="header">
+        <a href="#" class="logo">V<span>Search</span></a>
+        <div class="search-box-container">
+            <input type="text" id="search-input" placeholder="Search the web freely..." autocomplete="off">
+        </div>
     </div>
-    <div id="results"></div>
+
+    <div class="results-container" id="search-results">
+        <div class="status-msg">Type something above and press Enter to search the global web...</div>
+    </div>
 
     <script>
-        const searchBox = document.getElementById('search-box');
-        const resultsContainer = document.getElementById('results');
+        const searchInput = document.getElementById('search-input');
+        const resultsContainer = document.getElementById('search-results');
 
-        searchBox.addEventListener('input', async (e) => {
-            const query = e.target.value.trim();
-            
-            if (!query) {
-                resultsContainer.innerHTML = '';
-                return;
-            }
+        searchInput.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                if (!query) return;
 
-            try {
-                // Cloudflare Pages অটোমেটিক্যালি /functions/search.js কে /search রাউটে ম্যাপ করে
-                const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
-                const data = await response.json();
+                resultsContainer.innerHTML = '<div class="status-msg">Searching global web...</div>';
 
-                if (data.length === 0) {
-                    resultsContainer.innerHTML = '<div class="no-results">কোনো ফলাফল পাওয়া যায়নি!</div>';
-                    return;
+                try {
+                    const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+
+                    if (!data || data.length === 0) {
+                        resultsContainer.innerHTML = '<div class="status-msg">No results found on the internet.</div>';
+                        return;
+                    }
+
+                    resultsContainer.innerHTML = data.map(item => `
+                        <div class="result-item">
+                            <div class="site-url">${item.url}</div>
+                            <a class="result-title" href="${item.url}" target="_blank">${item.title}</a>
+                            <div class="snippet">${item.snippet}</div>
+                        </div>
+                    `).join('');
+
+                } catch (error) {
+                    resultsContainer.innerHTML = '<div class="status-msg">Error fetching search results. Try again.</div>';
+                    console.error(error);
                 }
-
-                // রেজাল্ট রেন্ডার করা
-                resultsContainer.innerHTML = data.map(item => `
-                    <div class="result-item">
-                        <a href="${item.url}" target="_blank">${item.title}</a>
-                        <p>${item.description}</p>
-                    </div>
-                `).join('');
-
-            } catch (error) {
-                console.error("Error fetching search results:", error);
             }
         });
     </script>
 </body>
-  </html>
-  
+    </html>
+    
