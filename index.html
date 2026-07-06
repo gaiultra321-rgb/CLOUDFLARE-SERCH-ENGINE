@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Global Search Engine</title>
+    <title>Virtual Anonymous Search & Browser</title>
     <style>
         :root {
             --bg-color: #202124;
@@ -11,14 +11,15 @@
             --text-main: #e8eaed;
             --text-link: #8ab4f8;
             --text-snippet: #bdc1c6;
-            --text-url: #3c4043;
         }
-        body {
+        body, html {
             font-family: Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
             padding: 0;
+            height: 100%;
+            overflow-x: hidden;
         }
         .header {
             display: flex;
@@ -37,13 +38,9 @@
             margin-right: 20px;
             text-decoration: none;
             text-transform: uppercase;
-            letter-spacing: 1px;
         }
         .logo span { color: #4285F4; }
-        .search-box-container {
-            flex-grow: 1;
-            max-width: 600px;
-        }
+        .search-box-container { flex-grow: 1; max-width: 600px; }
         input {
             width: 100%;
             padding: 12px 20px;
@@ -54,99 +51,126 @@
             color: #fff;
             box-sizing: border-box;
         }
-        input:focus {
-            outline: none;
-            box-shadow: 0 1px 6px rgba(32,33,36,.28);
-        }
-        .results-container {
-            max-width: 650px;
-            margin: 30px 20px 20px 160px;
-        }
+        .results-container { max-width: 650px; margin: 30px 20px 20px 160px; }
         @media (max-width: 800px) {
             .header { flex-direction: column; align-items: flex-start; }
             .results-container { margin: 20px; }
-            .logo { margin-bottom: 10px; }
         }
-        .result-item {
-            margin-bottom: 30px;
+        .result-item { margin-bottom: 30px; }
+        .result-item .site-url { font-size: 12px; color: var(--text-snippet); margin-bottom: 4px; }
+        .result-item a.result-title { color: var(--text-link); text-decoration: none; font-size: 20px; cursor: pointer; }
+        .result-item a.result-title:hover { text-decoration: underline; }
+        .result-item .snippet { font-size: 14px; color: var(--text-snippet); margin-top: 5px; }
+        
+        /* ফুল স্ক্রিন ইন-অ্যাপ ব্রাউজার ভিউ */
+        #browser-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            z-index: 1000;
+            flex-direction: column;
         }
-        .result-item .site-url {
-            font-size: 12px;
-            color: var(--text-snippet);
-            margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        #browser-bar {
+            background: #333;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            color: #fff;
         }
-        .result-item a.result-title {
-            color: var(--text-link);
-            text-decoration: none;
-            font-size: 20px;
-            display: inline-block;
+        #close-btn {
+            background: #ff5f56;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 15px;
         }
-        .result-item a.result-title:hover {
-            text-decoration: underline;
-        }
-        .result-item .snippet {
-            font-size: 14px;
-            color: var(--text-snippet);
-            line-height: 1.4;
-            margin-top: 5px;
-        }
-        .status-msg {
-            color: var(--text-snippet);
-            font-size: 14px;
-        }
+        #browser-url { font-size: 14px; color: #ccc; flex-grow: 1; }
+        iframe { width: 100%; flex-grow: 1; border: none; background: #fff; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <a href="#" class="logo">V<span>Search</span></a>
-        <div class="search-box-container">
-            <input type="text" id="search-input" placeholder="Search the web freely..." autocomplete="off">
+    <div id="main-view">
+        <div class="header">
+            <a href="#" class="logo">V<span>Search</span></a>
+            <div class="search-box-container">
+                <input type="text" id="search-input" placeholder="Search the web anonymously..." autocomplete="off">
+            </div>
+        </div>
+        <div class="results-container" id="search-results">
+            <div>Type and press Enter to search global web...</div>
         </div>
     </div>
 
-    <div class="results-container" id="search-results">
-        <div class="status-msg">Type something above and press Enter to search the global web...</div>
+    <!-- ইন-সাইট ব্রাউজার উইন্ডো -->
+    <div id="browser-container">
+        <div id="browser-bar">
+            <button id="close-btn" onclick="closeBrowser()">Back to Search</button>
+            <div id="browser-url">Loading...</div>
+        </div>
+        <iframe id="web-frame" src=""></iframe>
     </div>
 
     <script>
         const searchInput = document.getElementById('search-input');
         const resultsContainer = document.getElementById('search-results');
+        const browserContainer = document.getElementById('browser-container');
+        const webFrame = document.getElementById('web-frame');
+        const browserUrl = document.getElementById('browser-url');
 
         searchInput.addEventListener('keypress', async (e) => {
             if (e.key === 'Enter') {
                 const query = searchInput.value.trim();
                 if (!query) return;
 
-                resultsContainer.innerHTML = '<div class="status-msg">Searching global web...</div>';
+                resultsContainer.innerHTML = '<div>Searching global web...</div>';
 
                 try {
                     const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
                     const data = await response.json();
 
                     if (!data || data.length === 0) {
-                        resultsContainer.innerHTML = '<div class="status-msg">No results found on the internet.</div>';
+                        resultsContainer.innerHTML = '<div>No results found.</div>';
                         return;
                     }
 
                     resultsContainer.innerHTML = data.map(item => `
                         <div class="result-item">
                             <div class="site-url">${item.url}</div>
-                            <a class="result-title" href="${item.url}" target="_blank">${item.title}</a>
+                            <!-- এখানে সরাসরি লিংকের বদলে জাভাস্ক্রিপ্ট ফাংশন কল করা হচ্ছে -->
+                            <a class="result-title" onclick="openInSite('${item.url}')">${item.title}</a>
                             <div class="snippet">${item.snippet}</div>
                         </div>
                     `).join('');
 
                 } catch (error) {
-                    resultsContainer.innerHTML = '<div class="status-msg">Error fetching search results. Try again.</div>';
-                    console.error(error);
+                    resultsContainer.innerHTML = '<div>Error fetching results.</div>';
                 }
             }
         });
+
+        // আপনার সাইটের ভেতরেই প্রক্সি দিয়ে সাইট খোলার ফাংশন
+        function openInSite(url) {
+            browserUrl.innerText = "Browsing Anonymously: " + url;
+            // মেইন ইউআরএল-কে আপনার ওয়ার্কার প্রক্সির মাধ্যমে পাস করানো হচ্ছে সিকিউরিটি বাইপাস করতে
+            webFrame.src = `/search?proxy_url=${encodeURIComponent(url)}`;
+            browserContainer.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeBrowser() {
+            browserContainer.style.display = 'none';
+            webFrame.src = "";
+            document.body.style.overflow = 'auto';
+        }
     </script>
 </body>
-    </html>
-    
+                </html>
+        
