@@ -62,7 +62,6 @@
         .result-item a.result-title:hover { text-decoration: underline; }
         .result-item .snippet { font-size: 14px; color: var(--text-snippet); margin-top: 5px; }
         
-        /* ফুল স্ক্রিন ব্রাউজার উইন্ডো */
         #browser-container {
             display: none;
             position: fixed;
@@ -111,11 +110,11 @@
         <div class="header">
             <a href="#" class="logo">V<span>Search</span></a>
             <div class="search-box-container">
-                <input type="text" id="search-input" placeholder="Search and browse with rotating IP..." autocomplete="off">
+                <input type="text" id="search-input" placeholder="সার্চ করুন অথবা সরাসরি URL পেস্ট করুন..." autocomplete="off">
             </div>
         </div>
         <div class="results-container" id="search-results">
-            <div>Type and press Enter to search the web anonymously...</div>
+            <div>Type and press Enter to search or browse anonymously...</div>
         </div>
     </div>
 
@@ -125,7 +124,6 @@
             <button id="change-ip-btn" onclick="rotateIPAndReload()">🔄 Change IP & Reload</button>
             <div id="browser-url">Loading...</div>
         </div>
-        <!-- sandbox অপশন আপডেট করা হয়েছে বাটন ও ইনপুট কাজ করার জন্য -->
         <iframe id="web-frame" src="" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
     </div>
 
@@ -138,10 +136,30 @@
         
         let currentActiveUrl = "";
 
+        // ইনপুটটি কোনো ভ্যালিড URL কিনা তা চেক করার ফাংশন
+        function isValidURL(string) {
+            const pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+                '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+                '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+                '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+                '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+                '(\\#[-a-z\\d%_.~+=-]*)?$','i'); // fragment locator
+            return !!pattern.test(string);
+        }
+
         searchInput.addEventListener('keypress', async (e) => {
             if (e.key === 'Enter') {
-                const query = searchInput.value.trim();
+                let query = searchInput.value.trim();
                 if (!query) return;
+
+                // ফিচার: সরাসরি URL দিলে প্রক্সি ব্রাউজারে ওপেন হবে
+                if (isValidURL(query)) {
+                    if (!query.startsWith('http://') && !query.startsWith('https://')) {
+                        query = 'https://' + query;
+                    }
+                    openInSite(query);
+                    return;
+                }
 
                 resultsContainer.innerHTML = '<div>Searching global web...</div>';
 
@@ -150,7 +168,7 @@
                     const data = await response.json();
 
                     if (!data || data.length === 0) {
-                        resultsContainer.innerHTML = '<div>No results found.</div>';
+                        resultsContainer.innerHTML = '<div>No results found. Try another keyword.</div>';
                         return;
                     }
 
@@ -163,7 +181,7 @@
                     `).join('');
 
                 } catch (error) {
-                    resultsContainer.innerHTML = '<div>Error fetching results.</div>';
+                    resultsContainer.innerHTML = '<div>Error fetching results. API connection failed.</div>';
                 }
             }
         });
