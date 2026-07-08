@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Anonymous Search & Browser</title>
+    <title>Virtual Anonymous Search & IP Changer</title>
     <style>
         :root {
             --bg-color: #202124;
@@ -62,7 +62,7 @@
         .result-item a.result-title:hover { text-decoration: underline; }
         .result-item .snippet { font-size: 14px; color: var(--text-snippet); margin-top: 5px; }
         
-        /* ফুল স্ক্রিন ইন-অ্যাপ ব্রাউজার ভিউ */
+        /* ফুল স্ক্রিন ব্রাউজার উইন্ডো */
         #browser-container {
             display: none;
             position: fixed;
@@ -75,23 +75,33 @@
             flex-direction: column;
         }
         #browser-bar {
-            background: #333;
-            padding: 10px;
+            background: #202124;
+            padding: 10px 15px;
             display: flex;
             align-items: center;
             color: #fff;
+            border-bottom: 1px solid #3c4043;
+            gap: 15px;
         }
         #close-btn {
             background: #ff5f56;
             color: white;
             border: none;
-            padding: 5px 15px;
-            border-radius: 4px;
+            padding: 6px 14px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
-            margin-right: 15px;
         }
-        #browser-url { font-size: 14px; color: #ccc; flex-grow: 1; }
+        #change-ip-btn {
+            background: #107c41;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #browser-url { font-size: 13px; color: #bdc1c6; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         iframe { width: 100%; flex-grow: 1; border: none; background: #fff; }
     </style>
 </head>
@@ -101,21 +111,22 @@
         <div class="header">
             <a href="#" class="logo">V<span>Search</span></a>
             <div class="search-box-container">
-                <input type="text" id="search-input" placeholder="Search the web anonymously..." autocomplete="off">
+                <input type="text" id="search-input" placeholder="Search and browse with rotating IP..." autocomplete="off">
             </div>
         </div>
         <div class="results-container" id="search-results">
-            <div>Type and press Enter to search global web...</div>
+            <div>Type and press Enter to search the web anonymously...</div>
         </div>
     </div>
 
-    <!-- ইন-সাইট ব্রাউজার উইন্ডো -->
     <div id="browser-container">
         <div id="browser-bar">
-            <button id="close-btn" onclick="closeBrowser()">Back to Search</button>
+            <button id="close-btn" onclick="closeBrowser()">✕ Close</button>
+            <button id="change-ip-btn" onclick="rotateIPAndReload()">🔄 Change IP & Reload</button>
             <div id="browser-url">Loading...</div>
         </div>
-        <iframe id="web-frame" src=""></iframe>
+        <!-- sandbox অপশন আপডেট করা হয়েছে বাটন ও ইনপুট কাজ করার জন্য -->
+        <iframe id="web-frame" src="" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
     </div>
 
     <script>
@@ -124,6 +135,8 @@
         const browserContainer = document.getElementById('browser-container');
         const webFrame = document.getElementById('web-frame');
         const browserUrl = document.getElementById('browser-url');
+        
+        let currentActiveUrl = "";
 
         searchInput.addEventListener('keypress', async (e) => {
             if (e.key === 'Enter') {
@@ -144,7 +157,6 @@
                     resultsContainer.innerHTML = data.map(item => `
                         <div class="result-item">
                             <div class="site-url">${item.url}</div>
-                            <!-- এখানে সরাসরি লিংকের বদলে জাভাস্ক্রিপ্ট ফাংশন কল করা হচ্ছে -->
                             <a class="result-title" onclick="openInSite('${item.url}')">${item.title}</a>
                             <div class="snippet">${item.snippet}</div>
                         </div>
@@ -156,21 +168,27 @@
             }
         });
 
-        // আপনার সাইটের ভেতরেই প্রক্সি দিয়ে সাইট খোলার ফাংশন
         function openInSite(url) {
-            browserUrl.innerText = "Browsing Anonymously: " + url;
-            // মেইন ইউআরএল-কে আপনার ওয়ার্কার প্রক্সির মাধ্যমে পাস করানো হচ্ছে সিকিউরিটি বাইপাস করতে
+            currentActiveUrl = url;
+            browserUrl.innerText = "Proxy URL: " + url;
             webFrame.src = `/search?proxy_url=${encodeURIComponent(url)}`;
             browserContainer.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
 
+        function rotateIPAndReload() {
+            if (!currentActiveUrl) return;
+            browserUrl.innerText = "Rotating IP and reloading: " + currentActiveUrl;
+            const randomRotationToken = Math.random().toString(36).substring(7);
+            webFrame.src = `/search?proxy_url=${encodeURIComponent(currentActiveUrl)}&rotate=true&token=${randomRotationToken}`;
+        }
+
         function closeBrowser() {
             browserContainer.style.display = 'none';
             webFrame.src = "";
+            currentActiveUrl = "";
             document.body.style.overflow = 'auto';
         }
     </script>
 </body>
-                </html>
-        
+</html>
