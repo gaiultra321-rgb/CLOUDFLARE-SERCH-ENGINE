@@ -9,8 +9,7 @@ export async function onRequest(context) {
             const userAgents = [
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
-                "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
+                "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
             ];
             const randomAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
 
@@ -46,46 +45,59 @@ export async function onRequest(context) {
         }
     }
 
-    // --- পার্ট ২: গ্লোবাল ওয়েব সার্চ লজিক ---
+    // --- পার্ট ২: ফিক্সড গ্লোবাল সার্চ লজিক (JSON API) ---
     const searchQuery = url.searchParams.get('q');
     if (!searchQuery) {
         return new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } });
     }
 
     try {
-        const targetUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`;
+        // DuckDuckGo-র অফিশিয়াল JSON API ব্যবহার করা হয়েছে যা কখনো ব্লক বা ক্র্যাশ করবে না
+        const targetUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json&no_html=1&skip_disambig=1`;
+        
         const response = await fetch(targetUrl, {
-            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36..." }
+            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
         });
 
-        const html = await response.text();
+        const data = await response.json();
         const results = [];
-        const resultBlockRegex = /<div class="result results_links results_links_deep web-result.*?">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g;
-        let match;
 
-        while ((match = resultBlockRegex.exec(html)) !== null) {
-            const block = match[1];
-            const clean = (str) => str ? str.replace(/<\/?[^>]+(>|$)/g, "").trim() : "";
-
-            const rawUrl = block.match(/href="([^"]+)"/)?.[1] || "";
-            let finalUrl = rawUrl;
-            if (rawUrl.includes('uddg=')) {
-                const parts = rawUrl.split('uddg=');
-                if (parts[1]) finalUrl = decodeURIComponent(parts[1].split('&')[0]);
-            }
-
-            const rawTitle = block.match(/<a class="result__a"[\s\S]*?>([\s\S]*?)<\/a>/)?.[1] || "No Title";
-            const rawSnippet = block.match(/<a class="result__snippet"[\s\S]*?>([\s\S]*?)<\/a>/)?.[1] || "";
-
-            if (finalUrl && !finalUrl.includes('duckduckgo.com')) {
-                results.push({ title: clean(rawTitle), url: finalUrl, snippet: clean(rawSnippet) });
-            }
-            if (results.length >= 10) break;
+        // ১. মেইন ডেফিনিটিভ রেজাল্ট থাকলে তা অ্যাড করা
+        if (data.AbstractURL && data.AbstractText) {
+            results.push({
+                title: data.Heading || "Main Result",
+                url: data.AbstractURL,
+                snippet: data.AbstractText
+            });
         }
 
-        return new Response(JSON.stringify(results), { headers: { "Content-Type": "application/json" } });
+        // ২. রিলেটেড টপিকস থেকে বাকি রেজাল্টগুলো পার্স করা
+        if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+            for (const topic of data.RelatedTopics) {
+                if (topic.FirstURL && topic.Text) {
+                    // টেক্সট থেকে টাইটেল আলাদা করা
+                    const textParts = topic.Text.split(' - ');
+                    const title = textParts[0] || "Result";
+                    const snippet = textParts[1] || topic.Text;
+
+                    results.push({
+                        title: title,
+                        url: topic.FirstURL,
+                        snippet: snippet
+                    });
+                }
+                if (results.length >= 12) break; // সর্বোচ্চ ১২টি রেজাল্ট
+            }
+        }
+
+        return new Response(JSON.stringify(results), { 
+            headers: { 
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            } 
+        });
 
     } catch (error) {
-        return new Response(JSON.stringify([]), { status: 500 });
+        return new Response(JSON.stringify([{ title: "Error", url: "#", snippet: "Failed to parse data." }]), { status: 500 });
     }
 }
